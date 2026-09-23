@@ -12,6 +12,8 @@ function Barbers() {
       availability: "Available",
     }));
 
+    <h2>JHASJAHSJDBDN</h2>
+
   return (
     <div className="container mt-4">
       <h2 className="mb-4">Barbers</h2>
