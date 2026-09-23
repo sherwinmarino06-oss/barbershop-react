@@ -1,0 +1,21 @@
+{
+    "name": "Sherwin M. Macaspac",
+    "short_name": "Sherwin",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "blue",
+    "theme_color": "red",
+    "icons":[
+        {
+            "src": "./logo/192.png.png",
+            "sizes": "192x192",
+            "type":"image/png"
+        }, 
+
+        {
+            "src":"./logo/512.png.png",
+            "sizes":"512x512",
+            "type": "image/png"
+        }
+    ]
+}
