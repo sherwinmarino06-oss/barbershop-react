@@ -17,7 +17,7 @@ export default function ReservationTable() {
   const [editTime, seteditTime] = useState("");
   const [isModalOpen, setisModalOpen] = useState(false);
 
-  const reservation_url = "http://localhost:8080/api/reservations";
+  const reservation_url = "https://backend-28g9.onrender.com/api/reservations";
 
   useEffect(() => {
     fetch(reservation_url)
