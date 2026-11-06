@@ -17,7 +17,9 @@ export default function ReservationTable() {
   const [editTime, seteditTime] = useState("");
   const [isModalOpen, setisModalOpen] = useState(false);
 
-  const reservation_url = "https://backend-28g9.onrender.com/api/reservations";
+  // Local: http://localhost:8080  |  Deployed: set VITE_API_URL sa Netlify
+  const reservation_url =
+    (import.meta.env.VITE_API_URL || "http://localhost:8080") + "/api/reservations";
 
   useEffect(() => {
     fetch(reservation_url)
