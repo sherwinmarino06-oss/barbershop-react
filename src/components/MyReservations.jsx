@@ -1,14 +1,16 @@
 import React, { useContext } from "react";
 import { ReservationContext } from "../context/ReservationContext.jsx";
+import { auth } from "../firebase.js";
 
 function MyReservations() {
-  const { reservations, setReservations } = useContext(ReservationContext);
+  const { reservations: allReservations, cancelReservation } =
+    useContext(ReservationContext);
 
-  const cancelReservation = (index) => {
-    const updated = [...reservations];
-    updated.splice(index, 1);
-    setReservations(updated);
-  };
+  // Ipakita lang ang reservations ng naka-login na user
+  const myEmail = auth.currentUser?.email;
+  const reservations = allReservations.filter(
+    (res) => res.clientEmail && res.clientEmail === myEmail
+  );
 
   const getBadgeStyle = (status) => {
     const base = {
@@ -125,8 +127,8 @@ function MyReservations() {
                 </td>
               </tr>
             ) : (
-              reservations.map((res, index) => (
-                <tr key={index}>
+              reservations.map((res) => (
+                <tr key={res.id}>
                   <td
                     style={{
                       padding: "16px 20px",
@@ -184,7 +186,7 @@ function MyReservations() {
                     }}
                   >
                     <button
-                      onClick={() => cancelReservation(index)}
+                      onClick={() => cancelReservation(res.id)}
                       style={{
                         background: "transparent",
                         border: "1px solid #e0342f",

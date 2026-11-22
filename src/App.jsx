@@ -13,10 +13,14 @@ import MyReservations from "./components/MyReservations.jsx";
 import Profile from "./components/Profile.jsx";
 import ReservationTable from "./components/ReservationTable.jsx";
 import { ReservationProvider } from "./context/ReservationContext.jsx";
+import { StyleProvider } from "./context/StyleContext.jsx";
+import { BarberProvider } from "./context/BarberContext.jsx"; // 👉 BAGO
 
 import app, { auth, googleProvider, db } from "./firebase.js";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+
+const ADMIN_EMAIL = "sherwinmarino06@gmail.com";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -35,12 +39,11 @@ function App() {
         const userRef = doc(db, "users", currentUser.uid);
         const userSnap = await getDoc(userRef);
 
-        let currentRole = "admin";
+        // 👉 FIX: admin lang ang admin@gmail.com, client na ang lahat ng iba
+        const currentRole =
+          currentUser.email?.toLowerCase() === ADMIN_EMAIL ? "admin" : "client";
 
-        if (userSnap.exists()) {
-          currentRole = userSnap.data().role || "admin";
-        } else {
-          currentRole = currentUser.email === "admin@gmail.com" ? "admin" : "admin";
+        if (!userSnap.exists()) {
           await setDoc(userRef, {
             displayName: currentUser.displayName,
             email: currentUser.email,
@@ -48,6 +51,9 @@ function App() {
             role: currentRole,
             createdAt: serverTimestamp(),
           });
+        } else if (userSnap.data().role !== currentRole) {
+          // 👉 Itama ang mga dating account na naging "admin" nang hindi dapat
+          await updateDoc(userRef, { role: currentRole });
         }
 
         setRole(currentRole);
@@ -89,28 +95,32 @@ function App() {
   if (loading) return <h2>Loading...</h2>;
 
   return (
-    <ReservationProvider>
-      {user && <Navbar user={user} onLogout={handleLogout} />}
-      {!user ? (
-        showLogin ? (
-          <LoginForm onLogin={handleLogin} onBack={() => setShowLogin(false)} />
-        ) : (
-          <LandingPage onGetStarted={() => setShowLogin(true)} />
-        )
-      ) : (
-        <Routes>
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/client" element={<ClientDashboard />} />
-          <Route path="/reserve" element={<ReservationForm />} />
-          <Route path="/my-reservations" element={<MyReservations />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/barbers" element={<Barbers />} />
-          <Route path="/services" element={<Services />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/reservations" element={<ReservationTable />} />
-        </Routes>
-      )}
-    </ReservationProvider>
+    <StyleProvider>
+      <BarberProvider> {/* 👉 BAGO */}
+        <ReservationProvider>
+          {user && <Navbar user={user} onLogout={handleLogout} />}
+          {!user ? (
+            showLogin ? (
+              <LoginForm onLogin={handleLogin} onBack={() => setShowLogin(false)} />
+            ) : (
+              <LandingPage onGetStarted={() => setShowLogin(true)} />
+            )
+          ) : (
+            <Routes>
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/client" element={<ClientDashboard />} />
+              <Route path="/reserve" element={<ReservationForm />} />
+              <Route path="/my-reservations" element={<MyReservations />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/barbers" element={<Barbers />} />
+              <Route path="/services" element={<Services />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/reservations" element={<ReservationTable />} />
+            </Routes>
+          )}
+        </ReservationProvider>
+      </BarberProvider>
+    </StyleProvider>
   );
 }
 

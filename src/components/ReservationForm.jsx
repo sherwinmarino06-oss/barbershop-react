@@ -1,11 +1,17 @@
 import React, { useState, useContext } from "react";
 import { ReservationContext } from "../context/ReservationContext.jsx";
+import { StyleContext } from "../context/StyleContext.jsx";
+import { BarberContext } from "../context/BarberContext.jsx"; 
 
 function ReservationForm() {
   const { addReservation } = useContext(ReservationContext);
+  const { styleOptions } = useContext(StyleContext);
+  const { barbers } = useContext(BarberContext); 
+
   const [form, setForm] = useState({
     client: "Sherwin M. Macaspac",
     service: "",
+    styleChoice: "",
     barber: "",
     category: "Regular",
     date: "",
@@ -30,13 +36,31 @@ function ReservationForm() {
       }
     }
 
+   
+    if (name === "service") {
+      updatedForm.styleChoice = "";
+    }
+
     setForm(updatedForm);
   };
 
-  const handleSubmit = (e) => {
+  
+  const selectStyle = (name) => {
+    setForm((prev) => ({
+      ...prev,
+      styleChoice: prev.styleChoice === name ? "" : name,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    addReservation(form);
-    alert("Reservation submitted!");
+    try {
+      await addReservation(form);
+      alert("Reservation submitted!");
+    } catch (err) {
+      console.log("Reservation error:", err);
+      alert("Hindi na-submit ang reservation. Subukan ulit mamaya.");
+    }
   };
 
   return (
@@ -167,6 +191,85 @@ function ReservationForm() {
           transform: scale(0.99);
         }
 
+      
+        .style-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+          gap: 12px;
+        }
+
+        .style-card {
+          background: #0a0a0a;
+          border: 1px solid #333;
+          border-radius: 3px;
+          padding: 0;
+          cursor: pointer;
+          text-align: left;
+          color: #f2f2f2;
+          overflow: hidden;
+          transition: border-color 0.15s ease, transform 0.1s ease;
+        }
+
+        .style-card:hover {
+          border-color: #6b6b6b;
+        }
+
+        .style-card.selected {
+          border-color: #e0342f;
+          box-shadow: 0 0 0 1px #e0342f;
+        }
+
+        .style-thumb {
+          position: relative;
+          width: 100%;
+          aspect-ratio: 4 / 3;
+          background: #1a1a1a;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .style-thumb .style-placeholder {
+          font-family: "Anton", "Arial Black", sans-serif;
+          font-size: 13px;
+          letter-spacing: 0.04em;
+          color: #4a4a4a;
+          text-transform: uppercase;
+          text-align: center;
+          padding: 0 8px;
+        }
+
+        .style-thumb img {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .style-check {
+          position: absolute;
+          top: 6px;
+          right: 6px;
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          background: #e0342f;
+          color: #fff;
+          font-size: 13px;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 2;
+        }
+
+        .style-name {
+          padding: 10px 12px;
+          font-size: 13px;
+          font-weight: 600;
+        }
+
         @media (max-width: 520px) {
           .reserve-card {
             padding: 32px 24px;
@@ -200,6 +303,41 @@ function ReservationForm() {
             </select>
           </div>
 
+          
+          {form.service && (styleOptions[form.service] || []).length > 0 && (
+            <div className="reserve-field">
+              <label>
+                Choose a Style <span className="reserve-price-hint">(optional)</span>
+              </label>
+              <div className="style-grid">
+                {(styleOptions[form.service] || []).map((opt) => {
+                  const isSelected = form.styleChoice === opt.name;
+                  return (
+                    <button
+                      type="button"
+                      key={opt.id}
+                      className={`style-card ${isSelected ? "selected" : ""}`}
+                      onClick={() => selectStyle(opt.name)}
+                    >
+                      <div className="style-thumb">
+                        <span className="style-placeholder">{opt.name}</span>
+                        <img
+                          src={opt.img}
+                          alt={opt.name}
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                        {isSelected && <span className="style-check">✓</span>}
+                      </div>
+                      <div className="style-name">{opt.name}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="reserve-field">
             <label>Category</label>
             <select
@@ -225,9 +363,14 @@ function ReservationForm() {
               required
             >
               <option value="">Select Barber</option>
-              <option value="Kreshia">Kreshia</option>
-              <option value="Erica">Erica</option>
-              <option value="Heart">Heart</option>
+             
+              {barbers
+                .filter((b) => b.availability === "Available")
+                .map((b) => (
+                  <option key={b.id} value={b.name}>
+                    {b.name}
+                  </option>
+                ))}
             </select>
           </div>
 

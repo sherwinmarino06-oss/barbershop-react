@@ -2,19 +2,12 @@ import React, { useContext } from "react";
 import { ReservationContext } from "../context/ReservationContext.jsx";
 
 function AdminDashboard() {
-  const { reservations, setReservations } = useContext(ReservationContext);
+  const { reservations, updateReservationStatus } =
+    useContext(ReservationContext);
 
-  const approveReservation = (index) => {
-    const updated = [...reservations];
-    updated[index].status = "Approved";
-    setReservations(updated);
-  };
+  const approveReservation = (id) => updateReservationStatus(id, "Approved");
 
-  const declineReservation = (index) => {
-    const updated = [...reservations];
-    updated[index].status = "Declined";
-    setReservations(updated);
-  };
+  const declineReservation = (id) => updateReservationStatus(id, "Declined");
 
   const reservationsToday = reservations.length;
   const totalClients = new Set(reservations.map((res) => res.client)).size;
@@ -191,8 +184,8 @@ function AdminDashboard() {
                 </td>
               </tr>
             ) : (
-              reservations.map((res, index) => (
-                <tr key={index}>
+              reservations.map((res) => (
+                <tr key={res.id}>
                   <td style={tdStyle}>{res.client}</td>
                   <td style={tdStyle}>{res.service}</td>
                   <td style={tdStyle}>{res.barber}</td>
@@ -203,7 +196,7 @@ function AdminDashboard() {
                   </td>
                   <td style={tdStyle}>
                     <button
-                      onClick={() => approveReservation(index)}
+                      onClick={() => approveReservation(res.id)}
                       style={{
                         background: "transparent",
                         border: "1px solid #4ade80",
@@ -227,7 +220,7 @@ function AdminDashboard() {
                       Approve
                     </button>
                     <button
-                      onClick={() => declineReservation(index)}
+                      onClick={() => declineReservation(res.id)}
                       style={{
                         background: "transparent",
                         border: "1px solid #e0342f",

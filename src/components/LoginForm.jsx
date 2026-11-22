@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
-import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
 import { auth } from "../firebase";
 
 const RED = "#e5171f";
@@ -24,10 +28,14 @@ const IconChevronDown = () => (
 );
 
 function LoginForm({ onLogin, onBack }) {
+  const [mode, setMode] = useState("login"); // 👈 bago: "login" o "signup"
   const [role, setRole] = useState("client");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState(""); // 👈 bago
   const [error, setError] = useState("");
+
+  const isSignup = mode === "signup";
 
   useEffect(() => {
     const link = document.createElement("link");
@@ -37,24 +45,80 @@ function LoginForm({ onLogin, onBack }) {
     return () => document.head.removeChild(link);
   }, []);
 
-  async function handleSubmit(event) {
-        event.preventDefault() //prevent refresh
-        console.log(name);
-        try {
-            await fetch("http://localhost:8080/api/reservations", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: email,
-                })
-            })
-        } catch (err) {
-            console.log(err);
-        }
-        
+  const switchMode = () => {
+    setMode(isSignup ? "login" : "signup");
+    setError("");
+    setPassword("");
+    setConfirmPassword("");
+  };
+
+  // 👉 Bago: gumawa ng bagong account sa Firebase
+  const handleSignup = async () => {
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
     }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (email.trim().toLowerCase() === ADMIN_EMAIL) {
+      setError("This email is reserved. Please use a different email.");
+      return;
+    }
+    try {
+      // Auto-login na ito pagkatapos; ang App.jsx na ang magre-redirect papuntang /client
+      await createUserWithEmailAndPassword(auth, email.trim(), password);
+      setError("");
+    } catch (err) {
+      console.error(err);
+      if (err.code === "auth/email-already-in-use") {
+        setError("This email is already registered. Try logging in instead.");
+      } else if (err.code === "auth/invalid-email") {
+        setError("Please enter a valid email address.");
+      } else if (err.code === "auth/weak-password") {
+        setError("Password must be at least 6 characters.");
+      } else {
+        setError("Could not create account. Please try again.");
+      }
+    }
+  };
 
+  const handleLogin = async () => {
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      const isAdminAccount = result.user.email === ADMIN_EMAIL;
 
+      if (role === "admin" && !isAdminAccount) {
+        await signOut(auth);
+        setError("This account is not registered as Admin.");
+        return;
+      }
+      if (role === "client" && isAdminAccount) {
+        await signOut(auth);
+        setError("This is an Admin account. Please select Admin to continue.");
+        return;
+      }
+
+      setError("");
+    } catch (err) {
+      console.error(err);
+      setError("Invalid email or password.");
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setError("Please enter both email and password.");
+      return;
+    }
+    if (isSignup) {
+      await handleSignup();
+    } else {
+      await handleLogin();
+    }
+  };
 
   const inputStyle = {
     backgroundColor: "#000",
@@ -89,10 +153,12 @@ function LoginForm({ onLogin, onBack }) {
               <IconScissors />
             </div>
             <h2 style={{ fontFamily: "'Anton',sans-serif", color: "#fff", textTransform: "uppercase", fontSize: "1.7rem" }} className="mb-2">
-             BLADE <span style={{ color: RED }}>&amp;</span> CHAIR
+              BLADE <span style={{ color: RED }}>&amp;</span> CHAIR
             </h2>
             <p style={{ color: "#9a9a9a", fontSize: "0.9rem" }} className="mb-0">
-              Log in to book, reschedule, or manage your reservations.
+              {isSignup
+                ? "Create an account to book and manage your reservations."
+                : "Log in to book, reschedule, or manage your reservations."}
             </p>
           </div>
 
@@ -119,35 +185,52 @@ function LoginForm({ onLogin, onBack }) {
             />
           </div>
 
-          <div className="mb-4">
-            <div style={labelStyle} className="mb-1">SIGN IN AS</div>
-            <div style={{ position: "relative" }}>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                style={{
-                  ...inputStyle,
-                  width: "100%",
-                  appearance: "none",
-                  WebkitAppearance: "none",
-                  cursor: "pointer",
-                }}
-              >
-                <option value="client">Client</option>
-                <option value="admin">Admin</option>
-              </select>
-              <div style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
-                <IconChevronDown />
+          {/* 👉 Confirm password: lalabas lang sa Create Account mode */}
+          {isSignup && (
+            <div className="mb-4">
+              <div style={labelStyle} className="mb-1">CONFIRM PASSWORD</div>
+              <input
+                type="password"
+                className="form-control"
+                style={inputStyle}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+          )}
+
+          {/* 👉 "Sign in as": lalabas lang sa Login mode (Client lang ang puwedeng mag-sign up) */}
+          {!isSignup && (
+            <div className="mb-4">
+              <div style={labelStyle} className="mb-1">SIGN IN AS</div>
+              <div style={{ position: "relative" }}>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  style={{
+                    ...inputStyle,
+                    width: "100%",
+                    appearance: "none",
+                    WebkitAppearance: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="client">Client</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <div style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+                  <IconChevronDown />
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <button
             type="submit"
             className="btn w-100"
             style={{ backgroundColor: RED, color: "#fff", fontFamily: "'Inter',sans-serif", fontWeight: 700, letterSpacing: "0.04em", padding: "12px", borderRadius: 0, border: "none" }}
           >
-            LOG IN
+            {isSignup ? "CREATE ACCOUNT" : "LOG IN"}
           </button>
 
           <div className="d-flex align-items-center gap-2 my-3">
@@ -174,7 +257,13 @@ function LoginForm({ onLogin, onBack }) {
           {error && <div style={{ color: "#ff6b6b", fontSize: "0.85rem" }} className="text-center mt-3">{error}</div>}
 
           <div className="text-center mt-4" style={{ color: "#9a9a9a", fontSize: "0.88rem" }}>
-            New here? <span style={{ color: RED, fontWeight: 600 }}>Create an account</span>
+            {isSignup ? "Already have an account? " : "New here? "}
+            <span
+              onClick={switchMode}
+              style={{ color: RED, fontWeight: 600, cursor: "pointer" }}
+            >
+              {isSignup ? "Log in" : "Create an account"}
+            </span>
           </div>
         </form>
       </div>
