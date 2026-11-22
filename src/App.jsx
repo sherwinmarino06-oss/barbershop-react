@@ -14,7 +14,7 @@ import Profile from "./components/Profile.jsx";
 import ReservationTable from "./components/ReservationTable.jsx";
 import { ReservationProvider } from "./context/ReservationContext.jsx";
 import { StyleProvider } from "./context/StyleContext.jsx";
-import { BarberProvider } from "./context/BarberContext.jsx"; // 👉 BAGO
+import { BarberProvider } from "./context/BarberContext.jsx"; 
 
 import app, { auth, googleProvider, db } from "./firebase.js";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
