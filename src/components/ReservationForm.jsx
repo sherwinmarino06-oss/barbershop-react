@@ -1,15 +1,22 @@
 import React, { useState, useContext } from "react";
+import { Link } from "react-router-dom"; // 👉 BAGO
 import { ReservationContext } from "../context/ReservationContext.jsx";
 import { StyleContext } from "../context/StyleContext.jsx";
-import { BarberContext } from "../context/BarberContext.jsx"; 
+import { BarberContext } from "../context/BarberContext.jsx";
+import { useProfile } from "../hooks/useProfile.js"; // 👉 BAGO
 
 function ReservationForm() {
   const { addReservation } = useContext(ReservationContext);
   const { styleOptions } = useContext(StyleContext);
-  const { barbers } = useContext(BarberContext); 
+  const { barbers } = useContext(BarberContext);
+  const { profile, loading: profileLoading } = useProfile(); // 👉 BAGO
+
+  // 👉 BAGO: kumpleto lang kapag may pangalan at phone number
+  const profileComplete =
+    profile.fullName.trim() !== "" && profile.phone.trim() !== "";
 
   const [form, setForm] = useState({
-    client: "Sherwin M. Macaspac",
+    client: "", // 👉 BAGO: hindi na naka-hardcode; kukunin sa profile
     service: "",
     styleChoice: "",
     barber: "",
@@ -36,7 +43,7 @@ function ReservationForm() {
       }
     }
 
-   
+    // kapag nagpalit ng service, i-reset ang napiling style
     if (name === "service") {
       updatedForm.styleChoice = "";
     }
@@ -44,7 +51,7 @@ function ReservationForm() {
     setForm(updatedForm);
   };
 
-  
+  // pumili (o i-unselect) ng style
   const selectStyle = (name) => {
     setForm((prev) => ({
       ...prev,
@@ -52,15 +59,15 @@ function ReservationForm() {
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    try {
-      await addReservation(form);
-      alert("Reservation submitted!");
-    } catch (err) {
-      console.log("Reservation error:", err);
-      alert("Hindi na-submit ang reservation. Subukan ulit mamaya.");
+    if (!profileComplete) {
+      alert("Please complete your profile first.");
+      return;
     }
+    // 👉 BAGO: ang pangalan ay galing sa profile ng naka-login na user
+    addReservation({ ...form, client: profile.fullName.trim() });
+    alert("Reservation submitted!");
   };
 
   return (
@@ -191,7 +198,7 @@ function ReservationForm() {
           transform: scale(0.99);
         }
 
-      
+        /* ---------- Style picker ---------- */
         .style-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -270,6 +277,48 @@ function ReservationForm() {
           font-weight: 600;
         }
 
+        /* ---------- 👉 BAGO: Profile notice ---------- */
+        .reserve-booking-as {
+          font-size: 13px;
+          color: #a8a8a8;
+          margin: -24px 0 28px;
+        }
+
+        .reserve-booking-as strong {
+          color: #fff;
+        }
+
+        .reserve-notice {
+          border: 1px solid #e0342f;
+          border-radius: 3px;
+          background: #1a0f0f;
+          padding: 20px;
+        }
+
+        .reserve-notice p {
+          margin: 0 0 16px;
+          color: #f2f2f2;
+          font-size: 14px;
+          line-height: 1.5;
+        }
+
+        .reserve-link {
+          display: block;
+          text-align: center;
+          text-decoration: none;
+          background: #e0342f;
+          color: #fff;
+          font-weight: 700;
+          font-size: 15px;
+          padding: 12px 20px;
+          border-radius: 3px;
+        }
+
+        .reserve-link:hover {
+          background: #c72a26;
+          color: #fff;
+        }
+
         @media (max-width: 520px) {
           .reserve-card {
             padding: 32px 24px;
@@ -287,145 +336,165 @@ function ReservationForm() {
         <p className="reserve-eyebrow">Blade &amp; Chair</p>
         <h2 className="reserve-title">Book an Appointment</h2>
 
-        <form onSubmit={handleSubmit}>
-          <div className="reserve-field">
-            <label>Service</label>
-            <select
-              name="service"
-              className="reserve-control"
-              value={form.service}
-              onChange={handleChange}
-              required
-            >
-              <option value="">Select Service</option>
-              <option value="Haircut">Haircut</option>
-              <option value="Shave">Shave</option>
-            </select>
+        {/* 👉 BAGO: loading / kulang ang profile / ang mismong form */}
+        {profileLoading ? (
+          <p style={{ color: "#a8a8a8" }}>Loading...</p>
+        ) : !profileComplete ? (
+          <div className="reserve-notice">
+            <p>
+              Please complete your profile (full name and phone number) before
+              booking an appointment.
+            </p>
+            <Link to="/profile" className="reserve-link">
+              Go to Profile
+            </Link>
           </div>
+        ) : (
+          <>
+            <p className="reserve-booking-as">
+              Booking as <strong>{profile.fullName}</strong>
+            </p>
 
-          
-          {form.service && (styleOptions[form.service] || []).length > 0 && (
-            <div className="reserve-field">
-              <label>
-                Choose a Style <span className="reserve-price-hint">(optional)</span>
-              </label>
-              <div className="style-grid">
-                {(styleOptions[form.service] || []).map((opt) => {
-                  const isSelected = form.styleChoice === opt.name;
-                  return (
-                    <button
-                      type="button"
-                      key={opt.id}
-                      className={`style-card ${isSelected ? "selected" : ""}`}
-                      onClick={() => selectStyle(opt.name)}
-                    >
-                      <div className="style-thumb">
-                        <span className="style-placeholder">{opt.name}</span>
-                        <img
-                          src={opt.img}
-                          alt={opt.name}
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                          }}
-                        />
-                        {isSelected && <span className="style-check">✓</span>}
-                      </div>
-                      <div className="style-name">{opt.name}</div>
-                    </button>
-                  );
-                })}
+            <form onSubmit={handleSubmit}>
+              <div className="reserve-field">
+                <label>Service</label>
+                <select
+                  name="service"
+                  className="reserve-control"
+                  value={form.service}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select Service</option>
+                  <option value="Haircut">Haircut</option>
+                  <option value="Shave">Shave</option>
+                </select>
               </div>
-            </div>
-          )}
 
-          <div className="reserve-field">
-            <label>Category</label>
-            <select
-              name="category"
-              className="reserve-control"
-              value={form.category}
-              onChange={handleChange}
-              required
-            >
-              <option value="Regular">Regular</option>
-              <option value="Kids">Kids</option>
-              <option value="Senior">Adults</option>
-            </select>
-          </div>
+              {/* Style picker: galing sa mga pictures na dinagdag ng admin */}
+              {form.service && (styleOptions[form.service] || []).length > 0 && (
+                <div className="reserve-field">
+                  <label>
+                    Choose a Style <span className="reserve-price-hint">(optional)</span>
+                  </label>
+                  <div className="style-grid">
+                    {(styleOptions[form.service] || []).map((opt) => {
+                      const isSelected = form.styleChoice === opt.name;
+                      return (
+                        <button
+                          type="button"
+                          key={opt.id}
+                          className={`style-card ${isSelected ? "selected" : ""}`}
+                          onClick={() => selectStyle(opt.name)}
+                        >
+                          <div className="style-thumb">
+                            <span className="style-placeholder">{opt.name}</span>
+                            <img
+                              src={opt.img}
+                              alt={opt.name}
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                            {isSelected && <span className="style-check">✓</span>}
+                          </div>
+                          <div className="style-name">{opt.name}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-          <div className="reserve-field">
-            <label>Barber</label>
-            <select
-              name="barber"
-              className="reserve-control"
-              value={form.barber}
-              onChange={handleChange}
-              required
-            >
-              <option value="">Select Barber</option>
-             
-              {barbers
-                .filter((b) => b.availability === "Available")
-                .map((b) => (
-                  <option key={b.id} value={b.name}>
-                    {b.name}
-                  </option>
-                ))}
-            </select>
-          </div>
+              <div className="reserve-field">
+                <label>Category</label>
+                <select
+                  name="category"
+                  className="reserve-control"
+                  value={form.category}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="Regular">Regular</option>
+                  <option value="Kids">Kids</option>
+                  <option value="Senior">Adults</option>
+                </select>
+              </div>
 
-          <div className="reserve-row">
-            <div className="reserve-field">
-              <label>Date</label>
-              <input
-                type="date"
-                name="date"
-                className="reserve-control"
-                value={form.date}
-                onChange={handleChange}
-                required
-              />
-            </div>
+              <div className="reserve-field">
+                <label>Barber</label>
+                <select
+                  name="barber"
+                  className="reserve-control"
+                  value={form.barber}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select Barber</option>
+                  {barbers
+                    .filter((b) => b.availability === "Available")
+                    .map((b) => (
+                      <option key={b.id} value={b.name}>
+                        {b.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
 
-            <div className="reserve-field">
-              <label>Time</label>
-              <input
-                type="time"
-                name="time"
-                className="reserve-control"
-                value={form.time}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          </div>
+              <div className="reserve-row">
+                <div className="reserve-field">
+                  <label>Date</label>
+                  <input
+                    type="date"
+                    name="date"
+                    className="reserve-control"
+                    value={form.date}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
 
-          <div className="reserve-field">
-            <label>Notes (optional)</label>
-            <textarea
-              name="notes"
-              className="reserve-control"
-              value={form.notes}
-              onChange={handleChange}
-            ></textarea>
-          </div>
+                <div className="reserve-field">
+                  <label>Time</label>
+                  <input
+                    type="time"
+                    name="time"
+                    className="reserve-control"
+                    value={form.time}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              </div>
 
-          <div className="reserve-field">
-            <label>
-              Price <span className="reserve-price-hint">(auto-calculated)</span>
-            </label>
-            <input
-              type="text"
-              className="reserve-control"
-              value={form.price ? `₱${form.price}` : ""}
-              readOnly
-            />
-          </div>
+              <div className="reserve-field">
+                <label>Notes (optional)</label>
+                <textarea
+                  name="notes"
+                  className="reserve-control"
+                  value={form.notes}
+                  onChange={handleChange}
+                ></textarea>
+              </div>
 
-          <button type="submit" className="reserve-submit">
-            Reserve
-          </button>
-        </form>
+              <div className="reserve-field">
+                <label>
+                  Price <span className="reserve-price-hint">(auto-calculated)</span>
+                </label>
+                <input
+                  type="text"
+                  className="reserve-control"
+                  value={form.price ? `₱${form.price}` : ""}
+                  readOnly
+                />
+              </div>
+
+              <button type="submit" className="reserve-submit">
+                Reserve
+              </button>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );
